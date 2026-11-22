@@ -6,7 +6,7 @@
 
 ![CI](https://github.com/developjik/agentleak/actions/workflows/ci.yml/badge.svg)
 
-`0.1.0` 프리뷰 (npm 미배포)
+npm [`@developjik/agentleak`](https://www.npmjs.com/package/@developjik/agentleak) `0.1.0` 배포 중 — 스코프를 붙이세요. 스코프 없는 `agentleak`은 타인의 패키지입니다.
 
 같은 URL이라도 브라우저와 AI 크롤러가 받는 문서는 다를 수 있습니다. `agentleak`은 사람이
 보는 방식으로 한 번, `GPTBot`·`ClaudeBot`·`ChatGPT-User`·`PerplexityBot`으로 각각 한 번
