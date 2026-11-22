@@ -222,7 +222,7 @@ export function renderMarkdown(snapshot: Snapshot): string {
   lines.push('## Ethics');
   lines.push('');
   lines.push(
-    'Scan sites you own or have permission to scan. This tool sends one request per user agent, follows `--respect-robots` when asked, and is read-only: it never submits forms or changes content. Public disclosure of another site\'s findings is a legal and editorial decision, not a feature of the tool.',
+    'Scan sites you own or have permission to scan. This tool loads each page once per user agent, follows `--respect-robots` when asked, and is read-only: it never submits forms or changes content. Public disclosure of another site\'s findings is a legal and editorial decision, not a feature of the tool.',
   );
   lines.push('');
   return lines.join('\n');

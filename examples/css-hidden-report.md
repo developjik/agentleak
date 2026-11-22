@@ -1,6 +1,6 @@
 # agentleak report — http://127.0.0.1:4319/css-hidden
 
-Generated 2026-11-22 10:55:09 · agentleak 0.1.0 · schema `agentleak.snapshot/v1`
+Generated 2026-11-22 11:05:21 · agentleak 0.1.0 · schema `agentleak.snapshot/v1`
 
 ## Verdict
 
@@ -156,4 +156,4 @@ node dist/cli.js diff before.json after.json --fail-on new-instructions
 
 ## Ethics
 
-Scan sites you own or have permission to scan. This tool sends one request per user agent, follows `--respect-robots` when asked, and is read-only: it never submits forms or changes content. Public disclosure of another site's findings is a legal and editorial decision, not a feature of the tool.
+Scan sites you own or have permission to scan. This tool loads each page once per user agent, follows `--respect-robots` when asked, and is read-only: it never submits forms or changes content. Public disclosure of another site's findings is a legal and editorial decision, not a feature of the tool.

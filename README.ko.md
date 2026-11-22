@@ -2,7 +2,11 @@
 
 **우리 사이트가 AI에게만 보여주고 사람에게는 숨기는 문장을 찾습니다.**
 
-[English README](README.md) · MIT · Node 20+ · `0.1.0` 프리뷰 (npm 미배포)
+[English README](README.md) · MIT · Node 20+
+
+![CI](https://github.com/developjik/agentleak/actions/workflows/ci.yml/badge.svg)
+
+`0.1.0` 프리뷰 (npm 미배포)
 
 같은 URL이라도 브라우저와 AI 크롤러가 받는 문서는 다를 수 있습니다. `agentleak`은 사람이
 보는 방식으로 한 번, `GPTBot`·`ClaudeBot`·`ChatGPT-User`·`PerplexityBot`으로 각각 한 번
@@ -200,7 +204,7 @@ node dist/cli.js scan http://127.0.0.1:4319/css-hidden --out examples
 
 ## 윤리
 
-직접 소유했거나 스캔 허가를 받은 사이트만 스캔하세요. 에이전트마다 요청을 한 번씩만 보내고,
+직접 소유했거나 스캔 허가를 받은 사이트만 스캔하세요. 에이전트마다 페이지를 한 번씩만 열고,
 읽기 전용이며, 폼을 제출하지 않습니다. `robots.txt`가 막은 에이전트는 `--respect-robots`로
 건너뜁니다. 남의 사이트에서 찾은 결과를 공개하는 것은 도구의 기능이 아니라 법적·편집상의
 판단입니다.

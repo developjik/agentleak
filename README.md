@@ -2,7 +2,11 @@
 
 **Find the text your site shows to AI agents and hides from people.**
 
-[한국어 README](README.ko.md) · MIT · Node 20+ · `0.1.0` preview (not on npm yet)
+[한국어 README](README.ko.md) · MIT · Node 20+
+
+![CI](https://github.com/developjik/agentleak/actions/workflows/ci.yml/badge.svg)
+
+`0.1.0` preview (not on npm yet)
 
 A browser and an AI crawler can read two different versions of the same URL. `agentleak`
 loads the page as a person does, then as `GPTBot`, `ClaudeBot`, `ChatGPT-User` and
@@ -205,7 +209,7 @@ replacing them.
 
 ## Ethics
 
-Scan sites you own or have permission to scan. The scanner sends one request per user agent,
+Scan sites you own or have permission to scan. The scanner loads each page once per user agent,
 is read-only, never submits forms, and can skip agents disallowed by `robots.txt`
 (`--respect-robots`). Publishing another site's findings is a legal and editorial decision,
 not something the tool does for you.
