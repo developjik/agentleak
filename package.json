@@ -35,5 +35,11 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/developjik/agentleak.git"
-  }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "README.ko.md",
+    "LICENSE"
+  ]
 }
