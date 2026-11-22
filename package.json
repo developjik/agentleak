@@ -1,6 +1,6 @@
 {
   "name": "@developjik/agentleak",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "Audit what your site tells AI agents but hides from humans: hidden instructions, UA cloaking, and snapshot diffs.",
   "type": "module",

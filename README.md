@@ -6,7 +6,7 @@
 
 ![CI](https://github.com/developjik/agentleak/actions/workflows/ci.yml/badge.svg)
 
-`0.1.0` on npm as [`@developjik/agentleak`](https://www.npmjs.com/package/@developjik/agentleak) — keep the scope: the unscoped `agentleak` on npm is an unrelated package.
+`0.1.1` on npm as [`@developjik/agentleak`](https://www.npmjs.com/package/@developjik/agentleak) — keep the scope: the unscoped `agentleak` on npm is a different package by another author (GavenXia).
 
 A browser and an AI crawler can read two different versions of the same URL. `agentleak`
 loads the page as a person does, then as `GPTBot`, `ClaudeBot`, `ChatGPT-User` and
