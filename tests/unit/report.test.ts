@@ -103,6 +103,13 @@ describe('report renderers', () => {
     expect(md).toContain('ignore previous instructions');
   });
 
+  it('shell-quotes the URL in the reproduce commands', () => {
+    const md = renderMarkdown({ ...snapshot, url: "https://example.com/a?x=1&y=it's" });
+    expect(md).toContain(`npx -y @developjik/agentleak scan 'https://example.com/a?x=1&y=it'\\''s' --fail-on-leak`);
+    expect(md).toContain(`node dist/cli.js scan 'https://example.com/a?x=1&y=it'\\''s' --fail-on-leak`);
+    expect(renderMarkdown(snapshot)).toContain(`scan ${snapshot.url} --fail-on-leak`);
+  });
+
   it('renders a terminal summary with the verdict and evidence', () => {
     const text = renderTerminal(snapshot, { color: false });
     expect(text).toContain('LEAKS FOUND');
