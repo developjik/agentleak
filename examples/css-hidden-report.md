@@ -138,6 +138,7 @@ Visibility tricks detected on this page:
 ```bash
 node dist/cli.js scan http://127.0.0.1:4319/css-hidden --fail-on-leak
 # or from npm (keep the scope — unscoped `agentleak` is another package):
+npx playwright install chromium   # once, if no Chromium is installed yet
 npx -y @developjik/agentleak scan http://127.0.0.1:4319/css-hidden --fail-on-leak
 ```
 

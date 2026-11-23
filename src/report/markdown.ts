@@ -195,6 +195,7 @@ export function renderMarkdown(snapshot: Snapshot): string {
   lines.push('```bash');
   lines.push(`node dist/cli.js scan ${snapshot.url} --fail-on-leak`);
   lines.push('# or from npm (keep the scope — unscoped `agentleak` is another package):');
+  lines.push('npx playwright install chromium   # once, if no Chromium is installed yet');
   lines.push(`npx -y @developjik/agentleak scan ${snapshot.url} --fail-on-leak`);
   lines.push('```');
   lines.push('');

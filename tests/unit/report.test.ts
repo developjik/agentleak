@@ -98,6 +98,7 @@ describe('report renderers', () => {
     expect(md).toContain('## Method and limits');
     expect(md).toContain('dist/cli.js diff');
     expect(md).toContain('npx -y @developjik/agentleak scan');
+    expect(md).toContain('npx playwright install chromium');
     expect(md).not.toMatch(/npx (-y )?agentleak\b/);
     expect(md).toContain('ignore previous instructions');
   });
