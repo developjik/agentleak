@@ -194,8 +194,8 @@ export function renderMarkdown(snapshot: Snapshot): string {
   lines.push('');
   lines.push('```bash');
   lines.push(`node dist/cli.js scan ${snapshot.url} --fail-on-leak`);
-  lines.push('# or, once the package is published:');
-  lines.push(`npx agentleak scan ${snapshot.url} --fail-on-leak`);
+  lines.push('# or from npm (keep the scope — unscoped `agentleak` is another package):');
+  lines.push(`npx -y @developjik/agentleak scan ${snapshot.url} --fail-on-leak`);
   lines.push('```');
   lines.push('');
   lines.push('Snapshot diffs (track what changed between two scans):');

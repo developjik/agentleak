@@ -97,6 +97,8 @@ describe('report renderers', () => {
     expect(md).toContain('## 4. Everything hidden from humans');
     expect(md).toContain('## Method and limits');
     expect(md).toContain('dist/cli.js diff');
+    expect(md).toContain('npx -y @developjik/agentleak scan');
+    expect(md).not.toMatch(/npx (-y )?agentleak\b/);
     expect(md).toContain('ignore previous instructions');
   });
 
