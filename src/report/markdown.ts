@@ -193,9 +193,10 @@ export function renderMarkdown(snapshot: Snapshot): string {
   lines.push('## Reproduce');
   lines.push('');
   lines.push('```bash');
-  lines.push(`node dist/cli.js scan ${snapshot.url} --fail-on-leak`);
-  lines.push('# or, once the package is published:');
-  lines.push(`npx agentleak scan ${snapshot.url} --fail-on-leak`);
+  lines.push(`node dist/cli.js scan ${shellArg(snapshot.url)} --fail-on-leak`);
+  lines.push('# or from npm (keep the scope — unscoped `agentleak` is another package):');
+  lines.push('npx playwright install chromium   # once, if no Chromium is installed yet');
+  lines.push(`npx -y @developjik/agentleak scan ${shellArg(snapshot.url)} --fail-on-leak`);
   lines.push('```');
   lines.push('');
   lines.push('Snapshot diffs (track what changed between two scans):');
@@ -226,4 +227,8 @@ export function renderMarkdown(snapshot: Snapshot): string {
   );
   lines.push('');
   return lines.join('\n');
+}
+
+function shellArg(value: string): string {
+  return /^[\w.:/@%+=,~-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`;
 }
