@@ -212,8 +212,15 @@ async function observe(
       selector: m.kind,
     }));
 
+    // Raw-source parsing must not erase a DOM observation that already succeeded.
+    let rawTextBlocks: UaObservation['rawTextBlocks'] = [];
+    let rawTextError: string | undefined;
+    try { rawTextBlocks = extractRawText(rawHtml); }
+    catch (error) { rawTextError = `Raw HTML text parsing failed: ${error instanceof Error ? error.message : String(error)}`; }
+
     return {
       ...base,
+      ...(rawTextError ? { rawTextError } : {}),
       status,
       finalUrl: extraction.url || page.url(),
       title: extraction.title,
@@ -221,7 +228,7 @@ async function observe(
       durationMs: Date.now() - started,
       byteLength: Buffer.byteLength(rawHtml, 'utf8'),
       rawHtml,
-      rawTextBlocks: extractRawText(rawHtml),
+      rawTextBlocks,
       visibleText: extraction.visibleText,
       visibleChars: extraction.visibleChars,
       innerText: extraction.innerText,
@@ -317,6 +324,7 @@ export async function scanUrl(options: ScanOptions): Promise<ScanResult> {
         continue;
       }
       const obs = await observe(browser, url.toString(), ua, opts);
+      if (obs.rawTextError) warnings.push(`${ua.label}: ${obs.rawTextError}`);
       if (obs.error) warnings.push(`${ua.label}: ${obs.error}`);
       if (obs.blocked) warnings.push(`${ua.label}: HTTP ${obs.status} (explicitly denied)`);
       observations.push(obs);
