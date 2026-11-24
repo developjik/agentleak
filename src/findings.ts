@@ -167,7 +167,7 @@ export function buildFindings(
     }
   }
 
-  const knownTexts = new Set([...pending.values()].map((p) => p.finding.contentHash));
+  const knownTexts = new Map([...pending.values()].map((p) => [p.finding.contentHash, p]));
 
   for (const pair of cloaking.pairs) {
     if (pair.verdict !== 'cloaked' || pair.botOnly.length === 0) continue;
@@ -175,7 +175,14 @@ export function buildFindings(
     for (const block of pair.botOnly) {
       const scored = scoreText(block);
       maxScore = Math.max(maxScore, scored.score);
-      if (knownTexts.has(contentHash(block))) continue;
+      const known = knownTexts.get(contentHash(block));
+      if (known) {
+        // Preserve coverage when another agent receives a previously hidden
+        // block visibly. Content deduplication must not lose that observation.
+        known.uaIds.add(pair.uaId);
+        if (!known.finding.reasons.includes('ua-cloaking')) known.finding.reasons.push('ua-cloaking');
+        continue;
+      }
       if (isInstructionScore(scored.score)) {
         add(
           'ua-response',
