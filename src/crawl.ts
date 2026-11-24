@@ -223,6 +223,7 @@ export function renderCrawlMarkdown(file: CrawlSnapshot, diff?: CrawlDiff, maxFi
   if (diff) {
     lines.push('', '## Baseline comparison', '', `New instruction blocks: ${diff.newInstructions}; removed instruction blocks: ${diff.removedInstructions}`);
     for (const p of diff.pages) lines.push(`- ${safe(p.url)}: ${p.diff.newInstructions.length} new, ${p.diff.removed.filter(f => f.score >= 4).length} removed`);
+    for (const url of diff.addedPages) lines.push(`- NEW PAGE ${safe(url)}: ${file.pages.find(p => httpUrl(p.url).href === url)?.snapshot?.findings.filter(f => f.score >= 4).length ?? 0} instruction blocks (no removal baseline)`);
     for (const p of diff.uncomparable) lines.push(`- UNCOMPARED ${safe(p.url)}: ${safe(p.reason)}`);
   }
   for (const w of file.warnings) lines.push(`- Warning: ${safe(w)}`);
@@ -253,6 +254,7 @@ export function renderCrawlTerminal(file: CrawlSnapshot, diff?: CrawlDiff, maxFi
   if (diff) {
     lines.push(`Baseline: ${diff.newInstructions} new; ${diff.removedInstructions} removed; ${diff.uncomparable.length} uncomparable`);
     for (const p of diff.pages) lines.push(`  ${plain(p.url)}: ${p.diff.newInstructions.length} new; ${p.diff.removed.filter(f => f.score >= 4).length} removed`);
+    for (const url of diff.addedPages) lines.push(`  NEW PAGE ${plain(url)}: ${file.pages.find(p => httpUrl(p.url).href === url)?.snapshot?.findings.filter(f => f.score >= 4).length ?? 0} instruction blocks (no removal baseline)`);
     for (const p of diff.uncomparable) lines.push(`  UNCOMPARED ${plain(p.url)}: ${plain(p.reason)}`);
   }
   for (const w of file.warnings) lines.push(`Warning: ${plain(w)}`);
