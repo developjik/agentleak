@@ -22,3 +22,5 @@ export type {
   CloakingReport,
   CloakingPair,
 } from './types.js';
+
+export * from './crawl.js';
