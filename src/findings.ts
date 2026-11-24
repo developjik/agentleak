@@ -19,8 +19,12 @@ export interface UnicodeRecord {
 
 const MAX_EVIDENCE = 600;
 
+export function contentHash(text: string): string {
+  return createHash('sha256').update(normalizeText(text)).digest('hex');
+}
+
 function findingId(kind: string, text: string): string {
-  return `f_${createHash('sha1').update(`${kind}|${normalizeText(text).slice(0, 400)}`).digest('hex').slice(0, 12)}`;
+  return `f_${createHash('sha256').update(`${kind}|${contentHash(text)}`).digest('hex')}`;
 }
 
 function snippet(text: string, max = 180): string {
@@ -83,6 +87,7 @@ export function buildFindings(
       finding: {
         id,
         kind,
+        contentHash: contentHash(clean),
         channel,
         severity,
         score,
@@ -162,7 +167,7 @@ export function buildFindings(
     }
   }
 
-  const knownTexts = new Set([...pending.values()].map((p) => normalizeText(p.finding.text)));
+  const knownTexts = new Map([...pending.values()].map((p) => [p.finding.contentHash, p]));
 
   for (const pair of cloaking.pairs) {
     if (pair.verdict !== 'cloaked' || pair.botOnly.length === 0) continue;
@@ -170,7 +175,14 @@ export function buildFindings(
     for (const block of pair.botOnly) {
       const scored = scoreText(block);
       maxScore = Math.max(maxScore, scored.score);
-      if (knownTexts.has(normalizeText(block))) continue;
+      const known = knownTexts.get(contentHash(block));
+      if (known) {
+        // Preserve coverage when another agent receives a previously hidden
+        // block visibly. Content deduplication must not lose that observation.
+        known.uaIds.add(pair.uaId);
+        if (!known.finding.reasons.includes('ua-cloaking')) known.finding.reasons.push('ua-cloaking');
+        continue;
+      }
       if (isInstructionScore(scored.score)) {
         add(
           'ua-response',

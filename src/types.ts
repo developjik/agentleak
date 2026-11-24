@@ -89,6 +89,8 @@ export interface CloakingReport {
 
 export interface Finding {
   id: string;
+  /** SHA-256 of the full normalized text before display truncation. */
+  contentHash?: string;
   kind:
     | 'hidden-ai-instruction'
     | 'hidden-text'
