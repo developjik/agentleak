@@ -34,6 +34,9 @@ describe('effective robots policy', () => {
     expect(parseRobots('User-agent: *\nAllow: /p\nDisallow: /p*', names, '/private').disallowedAgents).toEqual(names);
     expect(parseRobots('User-agent: *\nDisallow: /private', names, '/private').blocksAll).toBe(false);
   });
+  test('end anchors contribute to rule priority', () => {
+    expect(parseRobots('User-agent: *\nAllow: /private\nDisallow: /private$', names, '/private').disallowedAgents).toEqual(names);
+  });
   test('handles adversarial wildcard patterns without backtracking', () => {
     expect(parseRobots('User-agent: *\nDisallow: /' + 'a*'.repeat(60) + 'b$', names, '/' + 'a'.repeat(120)).disallowedAgents).toEqual([]);
   });
