@@ -118,7 +118,7 @@ export function renderMarkdown(snapshot: Snapshot): string {
     const pair = snapshot.cloaking.pairs.find((p) => p.uaId === obs.uaId);
     lines.push(
       `| ${obs.label} | ${obs.kind} | ${uaStatus(obs)} | ${num(obs.visibleChars)} | ${obs.hiddenBlocks.length} | ${obs.comments.length} | ${
-        pair ? percentage(pair.similarity) : 'baseline'
+        pair ? (pair.rawComparable === false ? 'unavailable' : percentage(pair.similarity)) : 'baseline'
       } | ${pair ? pair.verdict : 'baseline'} |`,
     );
   }
