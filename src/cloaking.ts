@@ -10,14 +10,16 @@ function pairReport(baseline: UaObservation, other: UaObservation): CloakingPair
   const statusChanged = otherStatus !== baseStatus;
   const blocked = otherStatus >= 400 && baseStatus < 400;
 
-  const botOnly = blocksMissingFrom(other.rawTextBlocks, baseText).map((b) => b.text);
-  const browserOnly = blocksMissingFrom(baseline.rawTextBlocks, otherText).map((b) => b.text);
+  const incomplete = !!baseline.rawTextError || !!other.rawTextError;
+  const botOnly = incomplete ? [] : blocksMissingFrom(other.rawTextBlocks, baseText).map((b) => b.text);
+  const browserOnly = incomplete ? [] : blocksMissingFrom(baseline.rawTextBlocks, otherText).map((b) => b.text);
   const identicalHtml = baseline.rawHtml.length > 0 && baseline.rawHtml === other.rawHtml;
   const similarity = tokenSimilarity(baseText, otherText);
 
   let verdict: CloakingPair['verdict'];
   if (other.error && !other.status) verdict = 'error';
   else if (blocked) verdict = 'blocked';
+  else if (incomplete) verdict = 'error';
   else if (identicalHtml || (similarity >= 0.995 && botOnly.length === 0)) verdict = 'same';
   else if (similarity >= 0.9 && botOnly.length <= 1) verdict = 'minor-delta';
   else verdict = 'cloaked';
