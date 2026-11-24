@@ -53,6 +53,8 @@ export interface UaObservation {
   blocked: boolean;
   error?: string;
   durationMs: number;
+  responseMs?: number;
+  sessionWarm?: boolean;
   byteLength: number;
   rawHtml: string;
   rawTextBlocks: RawTextBlock[];
@@ -139,6 +141,16 @@ export interface ScanSummary {
   leakCount: number;
 }
 
+export interface VectorComparison {
+  axis: 'accept-language' | 'referer' | 'session';
+  uaId: string;
+  baseline: UaObservation;
+  variant: UaObservation;
+  comparison: CloakingPair;
+  /** Single navigation sample, not a reliable latency verdict. */
+  responseDeltaMs: number | null;
+}
+
 export interface Snapshot {
   schema: 'agentleak.snapshot/v1';
   product: string;
@@ -151,6 +163,7 @@ export interface Snapshot {
   robots: RobotsInfo;
   observations: UaObservation[];
   cloaking: CloakingReport;
+  vectors?: VectorComparison[];
   findings: Finding[];
   summary: ScanSummary;
 }
@@ -163,6 +176,8 @@ export interface ScanOptions {
   viewport?: { width: number; height: number };
   maxTextChars?: number;
   respectRobots?: boolean;
+  /** Opt in to extra header/session requests for every allowed UA. */
+  vectors?: boolean;
   headless?: boolean;
   browserExecutablePath?: string;
 }
