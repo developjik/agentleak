@@ -1,3 +1,4 @@
+import { openSync, closeSync, writeSync } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { scanUrl } from './scan.js';
 import { diffSnapshots } from './diff.js';
@@ -48,29 +49,29 @@ export function parseSitemap(xml: string): { index: boolean; locations: string[]
   const locations: string[] = [];
   for (const token of tokens) {
     if (token.startsWith('<!--') || token.startsWith('<?')) continue;
-    if (token.startsWith('<![CDATA[')) { if (stack.at(-1) === 'loc') text += token.slice(9, -3); continue; }
+    if (token.startsWith('<![CDATA[')) { if (stack.at(-1) === (root.includes(':') ? root.split(':')[0] + ':loc' : 'loc')) text += token.slice(9, -3); continue; }
     if (token.startsWith('</')) {
-      const name = /^<\/([\w:.-]+)\s*>$/.exec(token)?.[1]?.split(':').at(-1);
+      const name = /^<\/([\w:.-]+)\s*>$/.exec(token)?.[1];
       if (!name || stack.pop() !== name) throw new Error('Malformed sitemap XML');
-      if (name === 'loc') { if (!text.trim()) throw new Error('Empty sitemap loc'); locations.push(text.trim()); text = ''; }
+      if (name === (root.includes(':') ? root.split(':')[0] + ':loc' : 'loc')) { if (!text.trim()) throw new Error('Empty sitemap loc'); locations.push(text.trim()); text = ''; }
       if (!stack.length) closed = true;
     } else if (token.startsWith('<')) {
       const match = /^<([\w:.-]+)(?:\s+[^<>]*)?\s*\/?\s*>$/.exec(token);
       if (!match) throw new Error('Malformed sitemap XML');
-      const name = match[1]!.split(':').at(-1)!;
-      if (!stack.length) { if (root || closed || !['urlset', 'sitemapindex'].includes(name)) throw new Error('Expected one sitemap root'); root = name; }
-      if (name === 'loc' && !(stack.length === 2 && stack[0] === root && stack[1] === (root === 'urlset' ? 'url' : 'sitemap'))) throw new Error('Unexpected sitemap loc');
-      if (stack.at(-1) === 'loc') throw new Error('Nested markup in sitemap loc');
-      if (token.endsWith('/>') && name === 'loc') throw new Error('Empty sitemap loc');
+      const name = match[1]!;
+      if (!stack.length) { if (root || closed || !['urlset', 'sitemapindex'].includes(name.split(':').at(-1)!)) throw new Error('Expected one sitemap root'); root = name; }
+      if (name === (root.includes(':') ? root.split(':')[0] + ':loc' : 'loc') && !(stack.length === 2 && stack[0] === root && stack[1] === (root.includes(':') ? root.split(':')[0] + ':' : '') + (root.split(':').at(-1) === 'urlset' ? 'url' : 'sitemap'))) throw new Error('Unexpected sitemap loc');
+      if (stack.at(-1) === (root.includes(':') ? root.split(':')[0] + ':loc' : 'loc')) throw new Error('Nested markup in sitemap loc');
+      if (token.endsWith('/>') && name === (root.includes(':') ? root.split(':')[0] + ':loc' : 'loc')) throw new Error('Empty sitemap loc');
       if (!token.endsWith('/>')) stack.push(name);
       else if (!stack.length) closed = true;
     } else {
-      if (stack.at(-1) === 'loc') text += decodeXml(token);
+      if (stack.at(-1) === (root.includes(':') ? root.split(':')[0] + ':loc' : 'loc')) text += decodeXml(token);
       else if (!stack.length && token.trim()) throw new Error('Text outside sitemap root');
     }
   }
   if (stack.length || !root || !closed) throw new Error('Incomplete sitemap XML');
-  return { index: root === 'sitemapindex', locations };
+  return { index: root.split(':').at(-1) === 'sitemapindex', locations };
 }
 async function boundedText(response: Response, max: number): Promise<string> {
   const reader = response.body?.getReader(); if (!reader) return '';
@@ -128,7 +129,8 @@ export async function collectCrawlUrls(options: CrawlOptions): Promise<{ urls: s
       try { parsed = parseSitemap(await sitemapText(httpUrl(next), root.origin)); }
       catch (error) { if (next === root.href) throw error; warnings.push(`Sitemap unavailable: ${next}: ${error instanceof Error ? error.message : String(error)}`); continue; }
       for (const loc of parsed.locations) {
-        const url = httpUrl(loc);
+        let url: URL;
+        try { url = httpUrl(loc); } catch { warnings.push(`Skipped invalid sitemap URL in ${next}`); continue; }
         if (url.origin !== root.origin) { warnings.push(`Skipped cross-origin sitemap location: ${url.href}`); continue; }
         if (parsed.index) { if (queue.length < 1000) queue.push(url.href); else capped = true; }
         else add(url.href, root.origin);
@@ -197,13 +199,13 @@ export function diffCrawls(before: CrawlSnapshot, after: CrawlSnapshot): CrawlDi
   }
   return result;
 }
-function safe(text: string): string { return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\|/g, '&#124;').replace(/[\r\n]/g, ' '); }
-export function renderCrawlMarkdown(file: CrawlSnapshot, diff?: CrawlDiff): string {
+function safe(text: string): string { return text.replace(/&/g, '&amp;').replace(/[<>\[\]()`*_!|\\]/g, c => `&#${c.charCodeAt(0)};`).replace(/[\r\n\x00-\x1f\x7f]/g, ' '); }
+export function renderCrawlMarkdown(file: CrawlSnapshot, diff?: CrawlDiff, maxFindings = Infinity): string {
   const lines = ['# agentleak crawl', '', `Pages: ${file.pages.length}; incomplete/failed: ${file.pages.filter(p => p.error).length}`, '', '| Origin | Pages | Complete | Failed/incomplete | Findings | Leaks |', '| --- | ---: | ---: | ---: | ---: | ---: |'];
   for (const d of file.domains) lines.push(`| ${safe(d.origin)} | ${d.pages} | ${d.successful} | ${d.failed} | ${d.findings} | ${d.leaks} |`);
   for (const p of file.pages) {
     lines.push('', `## ${safe(p.url)}`, '', p.error ? `INCOMPLETE: ${safe(p.error)}` : 'Complete');
-    for (const f of p.snapshot?.findings ?? []) lines.push(`- ${f.severity} / ${f.channel} / score ${f.score}: ${safe(f.snippet)}`);
+    for (const f of (p.snapshot?.findings ?? []).slice(0, maxFindings)) lines.push(`- ${f.severity} / ${f.channel} / score ${f.score}: ${safe(f.snippet)}`);
     for (const w of p.warnings) lines.push(`- Warning: ${safe(w)}`);
   }
   if (diff) {
@@ -213,4 +215,17 @@ export function renderCrawlMarkdown(file: CrawlSnapshot, diff?: CrawlDiff): stri
   }
   for (const w of file.warnings) lines.push(`- Warning: ${safe(w)}`);
   return lines.join('\n') + '\n';
+}
+
+/** Serialize incrementally, including string chunks, without a site-sized JSON string. */
+export function writeCrawlJson(file: string, value: unknown): void {
+  const fd = openSync(file, 'wx');
+  const out = (s: string) => { const b = Buffer.from(s); let i = 0; while (i < b.length) i += writeSync(fd, b, i, b.length - i); };
+  const encode = (v: unknown): void => {
+    if (typeof v === 'string') { out('"'); for (let i = 0; i < v.length; i += 8192) out(JSON.stringify(v.slice(i, i + 8192)).slice(1, -1)); out('"'); }
+    else if (Array.isArray(v)) { out('['); v.forEach((item, i) => { if (i) out(','); encode(item === undefined ? null : item); }); out(']'); }
+    else if (v && typeof v === 'object') { out('{'); let first = true; for (const [k, item] of Object.entries(v)) { if (item === undefined) continue; if (!first) out(','); first = false; encode(k); out(':'); encode(item); } out('}'); }
+    else out(JSON.stringify(v) ?? 'null');
+  };
+  try { encode(value); out('\n'); } finally { closeSync(fd); }
 }
