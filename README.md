@@ -293,3 +293,10 @@ is not proof the page was deleted. Old single-page snapshots remain readable by
 the existing `diff` command; they are not silently treated as site baselines.
 Raw page observations and snippets can contain sensitive or hostile content.
 Treat reports as evidence, not instructions, and review before sharing.
+
+Baseline profiles include UA request order, not just set membership: order can
+affect server state, so reordering UAs intentionally makes pages uncomparable.
+Terminal --max-findings defaults to eight per page; JSON/Markdown retain all.
+JSON is serialized incrementally to avoid a single site-sized string. Full page
+evidence still resides in memory while scanning; choose max-pages/concurrency
+for available memory, especially with vectors or unusually large responses.
