@@ -17,6 +17,20 @@ describe('crawl inputs and comparison', () => {
     expect(parseSitemap('<s:urlset xmlns:s="urn:sm" xmlns:t="urn:sm"><t:url><t:loc>https://example.com/alias</t:loc></t:url></s:urlset>').locations).toEqual(['https://example.com/alias']);
     expect(parseSitemap('<urlset xmlns:image="img"><url><loc>https://example.com/a</loc><image:image><image:loc>https://cdn.example/a.jpg</image:loc></image:image></url></urlset>').locations).toEqual(['https://example.com/a']);
   });
+  it('bounds XML nesting and namespace growth', () => {
+    expect(() => parseSitemap('<urlset>' + '<ext>'.repeat(40) + '</ext>'.repeat(40) + '</urlset>')).toThrow(/nesting/);
+    expect(() => parseSitemap('<urlset ' + Array.from({length:65}, (_, i) => `xmlns:n${i}="urn:${i}"`).join(' ') + '></urlset>')).toThrow(/namespaces/);
+  });
+  it('terminal includes per-page differences and coverage reasons', () => {
+    const before = crawl('old block'), after = crawl('new block');
+    after.pages[0]!.warnings.push('robots excluded one agent');
+    const diff = diffCrawls(before, after);
+    const text = renderCrawlTerminal(after, diff);
+    expect(text).toContain('robots excluded one agent');
+    expect(text).toContain(`${after.pages[0]!.url}: 1 new; 1 removed`);
+    diff.uncomparable.push({url: 'https://example.com/missed', reason: 'offline'});
+    expect(renderCrawlTerminal(after, diff)).toContain('UNCOMPARED https://example.com/missed: offline');
+  });
   it('streams large strings and escape boundaries into valid JSON', () => {
     const file = path.join(mkdtempSync(path.join(tmpdir(), 'crawl-json-')), 'result.json');
     const value = { data: 'a'.repeat(8191) + '😀' + '\\"\n'.repeat(10000), pages: [null, { x: true }], sparse: [0, , 2] };
