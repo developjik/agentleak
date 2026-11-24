@@ -197,7 +197,7 @@ replacing them.
 
 ## Limits
 
-- Default cloaking detection varies `User-Agent` only. Opt-in `--vectors` additionally changes Accept-Language, Referer, and a warmed session one axis at a time for every allowed UA. It makes three extra scans per UA, plus a warm-up navigation for the session scan. Cookie values are not printed. Timing is one navigation-to-response sample, never proof of selective delay. Localized/personalized content is not automatically a leak. IP, TLS fingerprints, authenticated sessions and custom cookie values remain out of scope. Untested headers, time-dependent behavior and client-side checks may still be missed.
+- Default cloaking detection varies `User-Agent` only. Opt-in `--vectors` additionally changes Accept-Language, Referer, and a warmed session one axis at a time for every allowed UA. It makes three extra scans per UA, plus a warm-up navigation for the session scan. Cookie values are not printed. Timing is one request-to-response-start sample, never proof of selective delay. Localized/personalized content is not automatically a leak. IP, TLS fingerprints, authenticated sessions and custom cookie values remain out of scope. Untested headers, time-dependent behavior and client-side checks may still be missed.
 - A dynamic page whose content depends on login, location or time will show deltas that are
   not cloaking; inspect the evidence in the report.
 - The pattern catalogue is deliberately conservative. Unusual phrasings, other languages and
