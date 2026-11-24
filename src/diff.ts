@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type { DiffResult, Finding, Snapshot } from './types.js';
-import { normalizeText } from './html/text.js';
+import { contentHash } from './findings.js';
 import { isoLocal, painter, severityBadge, truncate } from './report/util.js';
 
 export function loadSnapshot(path: string): Snapshot {
@@ -19,7 +19,14 @@ export function loadSnapshot(path: string): Snapshot {
 }
 
 function textKey(f: Finding): string {
-  return normalizeText(f.text).slice(0, 400);
+  if (f.contentHash !== undefined) {
+    if (!/^[a-f0-9]{64}$/.test(f.contentHash)) throw new Error('Invalid finding content identity; rescan both snapshots');
+    return f.contentHash;
+  }
+  // v1 evidence was capped at 600 UTF-16 units. At that boundary its tail
+  // cannot be recovered, so a successful comparison would be misleading.
+  if (f.text.length >= 600) throw new Error('Legacy snapshot lacks complete content identity; rescan both snapshots');
+  return contentHash(f.text);
 }
 
 function changesBetween(before: Finding, after: Finding): string[] {
