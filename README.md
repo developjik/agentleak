@@ -231,3 +231,7 @@ Markdown), `src/diff.ts`, `src/fixtures` (the local test site).
 ## License
 
 MIT © 2026 정인권 ([@developjik](https://github.com/developjik))
+
+### Snapshot content identity
+
+New v1 snapshots include a SHA-256 `contentHash` of each full normalized block before evidence is capped at 600 UTF-16 units. IDs also use the complete block. Diff keys ignore channel so visibility-only changes remain changes, while distinct tails remain separate findings. Legacy v1 findings shorter than 600 units can be compared by their complete stored text. Legacy findings at or above that cap have unknown tails: diff refuses the comparison with exit code 2 and asks for both snapshots to be rescanned. It never treats an incomplete identity as a successful gate. Already discarded legacy blocks cannot be recovered.
