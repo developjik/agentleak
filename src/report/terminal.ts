@@ -109,6 +109,10 @@ export function renderTerminal(snapshot: Snapshot, opts: TerminalOptions): strin
   }
   lines.push('');
 
+  if(snapshot.vectors?.length){
+    lines.push('', 'Header/session axes (single-sample response timing, not a verdict):');
+    for(const row of snapshot.vectors)lines.push(`  ${row.uaId} ${row.axis}: ${row.comparison.verdict}; response delta ${row.responseDeltaMs??'n/a'}ms`);
+  }
   if (snapshot.cloaking.pairs.length) {
     lines.push(p.bold('User-agent cloaking'));
     for (const pair of snapshot.cloaking.pairs) {
