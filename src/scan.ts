@@ -130,6 +130,7 @@ async function observe(
   url: string,
   ua: UaSpec,
   opts: Required<Pick<ScanOptions, 'timeoutMs' | 'settleMs' | 'maxTextChars' | 'viewport'>>,
+  profile: { headers?: Record<string,string>; warmSession?: boolean } = {},
 ): Promise<UaObservation> {
   const started = Date.now();
   const base: UaObservation = {
@@ -160,7 +161,7 @@ async function observe(
     viewport: opts.viewport,
     serviceWorkers: 'block',
     ignoreHTTPSErrors: false,
-    extraHTTPHeaders: { 'accept-language': 'en-US,en;q=0.9,ko;q=0.8' },
+    extraHTTPHeaders: { 'accept-language': 'en-US,en;q=0.9,ko;q=0.8', ...profile.headers },
   });
   context.setDefaultTimeout(opts.timeoutMs);
   context.setDefaultNavigationTimeout(opts.timeoutMs);
@@ -171,7 +172,10 @@ async function observe(
     // into every named function. The extractor is serialized into the page, so
     // the helper has to exist there as well.
     await page.addInitScript({ content: 'globalThis.__name = globalThis.__name || ((fn) => fn);' });
+    if (profile.warmSession) { await page.goto(url, {waitUntil:'load',timeout:opts.timeoutMs}); }
+    const navigationStarted = Date.now();
     const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: opts.timeoutMs });
+    const responseMs = Date.now() - navigationStarted;
     await page.waitForLoadState('networkidle', { timeout: Math.min(4_000, opts.timeoutMs) }).catch(() => {});
     if (opts.settleMs > 0) await page.waitForTimeout(opts.settleMs);
 
@@ -222,6 +226,8 @@ async function observe(
       ...base,
       ...(rawTextError ? { rawTextError } : {}),
       status,
+      responseMs,
+      ...(profile.warmSession ? {sessionWarm:true} : {}),
       finalUrl: extraction.url || page.url(),
       title: extraction.title,
       blocked: status !== null && status >= 400,
@@ -293,6 +299,7 @@ export async function scanUrl(options: ScanOptions): Promise<ScanResult> {
   });
 
   const observations: UaObservation[] = [];
+  const vectors: NonNullable<Snapshot["vectors"]> = [];
   try {
     for (const ua of userAgents) {
       const robotsName = ROBOTS_AGENT_NAMES[ua.id];
@@ -328,6 +335,18 @@ export async function scanUrl(options: ScanOptions): Promise<ScanResult> {
       if (obs.error) warnings.push(`${ua.label}: ${obs.error}`);
       if (obs.blocked) warnings.push(`${ua.label}: HTTP ${obs.status} (explicitly denied)`);
       observations.push(obs);
+      if (options.vectors && !obs.error && !obs.blocked) {
+        const profiles: Array<{axis:'accept-language'|'referer'|'session';headers?:Record<string,string>;warmSession?:boolean}> = [
+          {axis:'accept-language' as const,headers:{'accept-language':'ko-KR,ko;q=0.9'}},
+          {axis:'referer' as const,headers:{referer:url.origin+'/'}},
+          {axis:'session' as const,warmSession:true},
+        ];
+        for (const profile of profiles) {
+          const variant=await observe(browser,url.toString(),ua,opts,profile);
+          if(variant.error||variant.rawTextError) warnings.push(`${ua.label} ${profile.axis}: ${variant.error??variant.rawTextError}`);
+          vectors.push({axis:profile.axis,uaId:ua.id,baseline:obs,variant,comparison:compareUserAgents(obs,[variant]).pairs[0]!,responseDeltaMs:obs.responseMs===undefined||variant.responseMs===undefined?null:variant.responseMs-obs.responseMs});
+        }
+      }
     }
   } finally {
     await browser.close().catch(() => {});
@@ -360,6 +379,7 @@ export async function scanUrl(options: ScanOptions): Promise<ScanResult> {
     observations,
     cloaking,
     findings,
+    ...(options.vectors ? {vectors} : {}),
   };
   const summary: ScanSummary = summarize(base);
   return { snapshot: { ...base, summary }, warnings };
