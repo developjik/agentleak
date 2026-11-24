@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
-import { writeCrawlJson, diffCrawls, parseSitemap, parseCrawlSnapshot, renderCrawlMarkdown, type CrawlSnapshot } from '../../src/crawl.js';
+import { renderCrawlTerminal, writeCrawlJson, diffCrawls, parseSitemap, parseCrawlSnapshot, renderCrawlMarkdown, type CrawlSnapshot } from '../../src/crawl.js';
 import { makeFinding, makeSnapshot } from './factory.js';
 function crawl(text: string): CrawlSnapshot {
   const snapshot = makeSnapshot(text ? [makeFinding({ text, score: 10 })] : []);
@@ -14,18 +14,21 @@ describe('crawl inputs and comparison', () => {
     expect(parseSitemap('<s:sitemapindex xmlns:s="x"><s:sitemap><s:loc>https://example.com/a.xml</s:loc></s:sitemap></s:sitemapindex>')).toEqual({ index: true, locations: ['https://example.com/a.xml'] });
   });
   it('ignores image extension locations while keeping namespaced page locs', () => {
+    expect(parseSitemap('<s:urlset xmlns:s="urn:sm" xmlns:t="urn:sm"><t:url><t:loc>https://example.com/alias</t:loc></t:url></s:urlset>').locations).toEqual(['https://example.com/alias']);
     expect(parseSitemap('<urlset xmlns:image="img"><url><loc>https://example.com/a</loc><image:image><image:loc>https://cdn.example/a.jpg</image:loc></image:image></url></urlset>').locations).toEqual(['https://example.com/a']);
   });
   it('streams large strings and escape boundaries into valid JSON', () => {
     const file = path.join(mkdtempSync(path.join(tmpdir(), 'crawl-json-')), 'result.json');
-    const value = { data: 'a'.repeat(8191) + '😀' + '\\"\n'.repeat(10000), pages: [null, { x: true }] };
+    const value = { data: 'a'.repeat(8191) + '😀' + '\\"\n'.repeat(10000), pages: [null, { x: true }], sparse: [0, , 2] };
     writeCrawlJson(file, value);
-    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(value);
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ ...value, sparse: [0, null, 2] });
   });
   it('escapes Markdown image/link syntax and limits terminal findings', () => {
     const file = crawl('text'); file.pages[0]!.snapshot!.findings[0]!.snippet = '![beacon](https://example.invalid/image)';
     expect(renderCrawlMarkdown(file)).not.toContain('![');
     expect(renderCrawlMarkdown(file, undefined, 0)).not.toContain('beacon');
+    file.pages[0]!.url = 'https://example.com/about_us';
+    expect(renderCrawlTerminal(file)).toContain('https://example.com/about_us');
   });
   it('rejects DTDs, misplaced loc, bad XML and invalid entities', () => {
     for (const xml of ['<!DOCTYPE x><urlset></urlset>', '<urlset><loc>https://example.com</loc></urlset>', '<urlset><url></urlset>', '<urlset><url><loc>&unknown;</loc></url></urlset>', '<urlset><url><loc>&#0;</loc></url></urlset>']) expect(() => parseSitemap(xml)).toThrow();
