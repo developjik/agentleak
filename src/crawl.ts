@@ -204,7 +204,7 @@ export function renderCrawlMarkdown(file: CrawlSnapshot, diff?: CrawlDiff, maxFi
   const lines = ['# agentleak crawl', '', `Pages: ${file.pages.length}; incomplete/failed: ${file.pages.filter(p => p.error).length}`, '', '| Origin | Pages | Complete | Failed/incomplete | Findings | Leaks |', '| --- | ---: | ---: | ---: | ---: | ---: |'];
   for (const d of file.domains) lines.push(`| ${safe(d.origin)} | ${d.pages} | ${d.successful} | ${d.failed} | ${d.findings} | ${d.leaks} |`);
   for (const p of file.pages) {
-    lines.push('', `## ${safe(p.url)}`, '', p.error ? `INCOMPLETE: ${safe(p.error)}` : 'Complete');
+    lines.push('', `## ${safe(p.url)}`, '', p.error ? `INCOMPLETE: ${safe(p.error)}` : 'Complete', '');
     for (const f of (p.snapshot?.findings ?? []).slice(0, maxFindings)) lines.push(`- ${f.severity} / ${f.channel} / score ${f.score}: ${safe(f.snippet)}`);
     for (const w of p.warnings) lines.push(`- Warning: ${safe(w)}`);
   }
