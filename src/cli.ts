@@ -245,7 +245,7 @@ export async function main(argv: string[]): Promise<number> {
 }
 
 const isEntry =
-  Boolean(process.argv[1]) && import.meta.url === pathToFileURL(realpathSync(resolve(process.argv[1]))).href;
+  Boolean(process.argv[1]) && (import.meta.url === pathToFileURL(resolve(process.argv[1])).href || import.meta.url === pathToFileURL(realpathSync(resolve(process.argv[1]))).href);
 if (isEntry) {
   main(process.argv.slice(2))
     .then((code) => {
