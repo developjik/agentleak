@@ -56,6 +56,8 @@ export interface UaObservation {
   byteLength: number;
   rawHtml: string;
   rawTextBlocks: RawTextBlock[];
+  /** Raw parsing degraded, but the successful rendered observation is retained. */
+  rawTextError?: string;
   visibleText: string;
   visibleChars: number;
   innerText: string;
