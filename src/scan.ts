@@ -60,17 +60,38 @@ export function parseRobots(text: string, agentNames: string[], path = '/'): Rob
       if (value) current.rules.push({ path: value, allow: key === 'allow' });
     }
   }
-  function denied(agent: string): boolean {
+  // Compare UTF-8 octets, decoding only unreserved percent escapes (RFC 9309).
+  function normalize(value: string): string {
+    return Array.from(value, (char) => char.charCodeAt(0) > 127 ? encodeURIComponent(char) : char).join('')
+      .replace(/%[0-9a-f]{2}/gi, (escape) => {
+        const char = String.fromCharCode(parseInt(escape.slice(1), 16));
+        return /[a-z0-9._~-]/i.test(char) ? char : escape.toUpperCase();
+      });
+  }
+  // Dynamic programming avoids exponential regex backtracking on remote rules.
+  function matches(pattern: string, value: string, end: boolean): boolean {
+    let row = new Uint8Array(value.length + 1);
+    row[0] = 1;
+    for (const char of pattern) {
+      const next = new Uint8Array(value.length + 1);
+      if (char === '*') next[0] = row[0]!;
+      for (let i = 1; i <= value.length; i++) {
+        next[i] = char === '*' ? (row[i]! | next[i - 1]!) : Number(row[i - 1] === 1 && value[i - 1] === char);
+      }
+      row = next;
+    }
+    return end ? row[value.length] === 1 : row.some((entry) => entry === 1);
+  }
+  function denied(agent: string, target = path): boolean {
     const specific = groups.filter((g) => g.agents.includes(agent));
     const selected = specific.length ? specific : groups.filter((g) => g.agents.includes('*'));
     let bestLength = -1;
     let allowed = true;
     for (const rule of selected.flatMap((g) => g.rules)) {
       const end = rule.path.endsWith('$');
-      const pattern = (end ? rule.path.slice(0, -1) : rule.path)
-        .split('*').map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*');
-      if (!new RegExp('^' + pattern + (end ? '$' : '')).test(path)) continue;
-      const length = rule.path.replace(/\*/g, '').length;
+      const pattern = normalize(end ? rule.path.slice(0, -1) : rule.path);
+      if (!matches(pattern, normalize(target), end)) continue;
+      const length = pattern.length;
       if (length > bestLength || (length === bestLength && rule.allow)) {
         bestLength = length;
         allowed = rule.allow;
@@ -79,7 +100,7 @@ export function parseRobots(text: string, agentNames: string[], path = '/'): Rob
     return !allowed;
   }
   const wanted = [...new Set(agentNames.map((name) => name.toLowerCase()))];
-  return { found: true, blocksAll: denied('*'), disallowedAgents: wanted.filter(denied) };
+  return { found: true, blocksAll: denied('*', '/'), disallowedAgents: wanted.filter((name) => denied(name)) };
 }
 
 async function fetchRobots(url: URL, userAgent: string): Promise<RobotsInfo> {
