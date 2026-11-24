@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
+import { crawlSite, diffCrawls, parseCrawlSnapshot, renderCrawlMarkdown } from './crawl.js';
 import { scanUrl } from './scan.js';
 import { diffSnapshots, loadSnapshot, renderDiffMarkdown, renderDiffTerminal } from './diff.js';
 import { renderMarkdown } from './report/markdown.js';
@@ -15,6 +16,7 @@ const HELP = `agentleak ${VERSION} — audit what your site tells AI agents but 
 
 Usage
   agentleak scan <url> [options]
+  agentleak crawl --sitemap <url> | --urls <file> [options]
   agentleak diff <before.json> <after.json> [options]
   agentleak fixtures [--port 4319]
   agentleak --help | --version
@@ -34,6 +36,14 @@ Scan options
   --max-findings <n>     Findings shown in the terminal summary (default: 8)
   --no-color             Disable ANSI colour
   --quiet                Only write files and set the exit code
+
+Crawl options (plus scan options)
+  --sitemap <url>        Same-origin sitemap or sitemap index (20 documents max)
+  --urls <file>          HTTP(S) URL per line, # comments allowed
+  --max-pages <n>        1..1000, default 100
+  --concurrency <n>      1..4 pages concurrently, default 2
+  --baseline <file>      Previous crawl JSON for page-level comparison
+  Partial scans write evidence then exit 2; leak gate exits 1 otherwise.
 
 Diff options
   --format <list>        terminal,markdown (default: both)
@@ -78,6 +88,11 @@ export async function main(argv: string[]): Promise<number> {
       args: argv,
       allowPositionals: true,
       options: {
+        sitemap: { type: 'string' },
+        urls: { type: 'string' },
+        'max-pages': { type: 'string' },
+        concurrency: { type: 'string' },
+        baseline: { type: 'string' },
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'v' },
         out: { type: 'string' },
@@ -128,6 +143,34 @@ export async function main(argv: string[]): Promise<number> {
       process.once('SIGTERM', stop);
     });
     return 0;
+  }
+
+  if (command === 'crawl') {
+    try {
+      if (!values.sitemap && !values.urls) throw new Error('--sitemap or --urls is required');
+      const formats = parseFormatList(values.format ?? 'terminal,json,markdown', ['terminal', 'json', 'markdown']);
+      const failOn = values['fail-on-leak'] ? 'leak' : (values['fail-on'] ?? 'never');
+      if (!['leak', 'high', 'never'].includes(failOn)) throw new Error('--fail-on expects leak|high|never');
+      const baseline = values.baseline ? parseCrawlSnapshot(JSON.parse(readFileSync(values.baseline, 'utf8'))) : undefined;
+      const snapshot = await crawlSite({ sitemap: values.sitemap, urlsFile: values.urls,
+        maxPages: numOpt(values['max-pages'], 100, 'max-pages'), concurrency: numOpt(values.concurrency, 2, 'concurrency'),
+        userAgents: resolveUserAgents(values.ua), timeoutMs: numOpt(values.timeout, 30000, 'timeout'),
+        settleMs: numOpt(values.settle, 800, 'settle'), viewport: values.viewport ? parseViewport(values.viewport) : undefined,
+        respectRobots: Boolean(values['respect-robots']), vectors: Boolean(values.vectors) });
+      const comparison = baseline ? diffCrawls(baseline, snapshot) : undefined;
+      const out = resolve(values.out ?? '.'); mkdirSync(out, { recursive: true });
+      const base = resolve(out, `agentleak-crawl-${stamp()}`);
+      if (formats.includes('json')) writeFileSync(`${base}.json`, JSON.stringify({ ...snapshot, ...(comparison ? { comparison } : {}) }, null, 2) + '\n');
+      if (formats.includes('markdown')) writeFileSync(`${base}.md`, renderCrawlMarkdown(snapshot, comparison));
+      if (!values.quiet) {
+        if (formats.includes('terminal')) process.stdout.write(renderCrawlMarkdown(snapshot, comparison));
+        if (formats.includes('json')) process.stdout.write(`JSON: ${base}.json\n`);
+        if (formats.includes('markdown')) process.stdout.write(`Markdown: ${base}.md\n`);
+      }
+      if (snapshot.pages.some(p => p.error) || snapshot.warnings.length || comparison?.uncomparable.length) return 2;
+      const leaks = snapshot.pages.some(p => failOn === 'leak' ? p.snapshot?.summary.leak : failOn === 'high' && (p.snapshot?.summary.findingsBySeverity.high ?? 0) > 0);
+      return leaks ? 1 : 0;
+    } catch (error) { process.stderr.write(`agentleak crawl failed: ${error instanceof Error ? error.message : String(error)}\n`); return 2; }
   }
 
   if (command === 'scan') {
