@@ -60,9 +60,11 @@ export function parseSitemap(xml: string): { index: boolean; locations: string[]
     } else if (token.startsWith('<')) {
       const match = /^<([\w:.-]+)(?:\s+[^<>]*)?\s*\/?\s*>$/.exec(token);
       if (!match) throw new Error('Malformed sitemap XML');
+      if (stack.length >= 32) throw new Error('Sitemap nesting exceeds 32');
       const raw = match[1]!; const parts = raw.split(':'); const local = parts.at(-1)!;
       const ns = { ...(stack.at(-1)?.ns ?? {}) };
       for (const attr of token.matchAll(/\sxmlns(?::([\w.-]+))?\s*=\s*(["'])(.*?)\2/g)) ns[attr[1] ?? ''] = decodeXml(attr[3]!);
+      if (Object.keys(ns).length > 64) throw new Error('Sitemap namespaces exceed 64');
       const prefix = parts.length > 1 ? parts[0]! : '';
       if (prefix && ns[prefix] === undefined) throw new Error('Undeclared sitemap namespace');
       const uri = ns[prefix] ?? '';
@@ -246,8 +248,13 @@ export function renderCrawlTerminal(file: CrawlSnapshot, diff?: CrawlDiff, maxFi
   for (const p of file.pages) {
     lines.push(plain(p.url), p.error ? `  INCOMPLETE: ${plain(p.error)}` : '  Complete');
     for (const f of (p.snapshot?.findings ?? []).slice(0, maxFindings)) lines.push(`  ${f.severity}/${f.channel}: ${plain(f.snippet)}`);
+    for (const w of p.warnings) lines.push(`  Warning: ${plain(w)}`);
   }
-  if (diff) lines.push(`Baseline: ${diff.newInstructions} new; ${diff.removedInstructions} removed; ${diff.uncomparable.length} uncomparable`);
+  if (diff) {
+    lines.push(`Baseline: ${diff.newInstructions} new; ${diff.removedInstructions} removed; ${diff.uncomparable.length} uncomparable`);
+    for (const p of diff.pages) lines.push(`  ${plain(p.url)}: ${p.diff.newInstructions.length} new; ${p.diff.removed.filter(f => f.score >= 4).length} removed`);
+    for (const p of diff.uncomparable) lines.push(`  UNCOMPARED ${plain(p.url)}: ${plain(p.reason)}`);
+  }
   for (const w of file.warnings) lines.push(`Warning: ${plain(w)}`);
   return lines.join('\n') + '\n';
 }
