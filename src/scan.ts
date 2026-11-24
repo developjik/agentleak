@@ -70,6 +70,7 @@ export function parseRobots(text: string, agentNames: string[], path = '/'): Rob
   }
   // Dynamic programming avoids exponential regex backtracking on remote rules.
   function matches(pattern: string, value: string, end: boolean): boolean {
+    if (!pattern.includes('*')) return end ? value === pattern : value.startsWith(pattern);
     let row = new Uint8Array(value.length + 1);
     row[0] = 1;
     for (const char of pattern) {
@@ -82,16 +83,21 @@ export function parseRobots(text: string, agentNames: string[], path = '/'): Rob
     }
     return end ? row[value.length] === 1 : row.some((entry) => entry === 1);
   }
-  function denied(agent: string, target = path): boolean {
+  const normalizedPath = normalize(path);
+  const normalizedRules = new Map<Rule, { pattern: string; end: boolean }>();
+  for (const group of groups) for (const rule of group.rules) {
+    const end = rule.path.endsWith('$');
+    normalizedRules.set(rule, { end, pattern: normalize(end ? rule.path.slice(0, -1) : rule.path) });
+  }
+  function denied(agent: string, target = normalizedPath): boolean {
     const specific = groups.filter((g) => g.agents.includes(agent));
     const selected = specific.length ? specific : groups.filter((g) => g.agents.includes('*'));
     let bestLength = -1;
     let allowed = true;
     for (const rule of selected.flatMap((g) => g.rules)) {
-      const end = rule.path.endsWith('$');
-      const pattern = normalize(end ? rule.path.slice(0, -1) : rule.path);
-      if (!matches(pattern, normalize(target), end)) continue;
-      const length = pattern.length;
+      const { pattern, end } = normalizedRules.get(rule)!;
+      if (!matches(pattern, target, end)) continue;
+      const length = pattern.length + Number(end);
       if (length > bestLength || (length === bestLength && rule.allow)) {
         bestLength = length;
         allowed = rule.allow;
