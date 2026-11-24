@@ -39,39 +39,47 @@ function requireHttpUrl(input: string): URL {
   return url;
 }
 
-export function parseRobots(text: string, agentNames: string[]): RobotsInfo {
-  const groups: Array<{ agents: string[]; disallow: string[] }> = [];
-  let current: { agents: string[]; disallow: string[] } | null = null;
-
+export function parseRobots(text: string, agentNames: string[], path = '/'): RobotsInfo {
+  type Rule = { path: string; allow: boolean };
+  const groups: Array<{ agents: string[]; rules: Rule[]; hasRules: boolean }> = [];
+  let current: (typeof groups)[number] | undefined;
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.replace(/#.*$/, '').trim();
-    if (!line) continue;
-    const [keyRaw, ...rest] = line.split(':');
-    if (!keyRaw || rest.length === 0) continue;
-    const key = keyRaw.trim().toLowerCase();
-    const value = rest.join(':').trim();
+    const colon = line.indexOf(':');
+    if (colon < 0) continue;
+    const key = line.slice(0, colon).trim().toLowerCase();
+    const value = line.slice(colon + 1).trim();
     if (key === 'user-agent') {
-      if (!current || current.disallow.length > 0) {
-        current = { agents: [], disallow: [] };
+      if (!current || current.hasRules) {
+        current = { agents: [], rules: [], hasRules: false };
         groups.push(current);
       }
       current.agents.push(value.toLowerCase());
-    } else if (key === 'disallow' && current) {
-      current.disallow.push(value);
+    } else if ((key === 'allow' || key === 'disallow') && current) {
+      current.hasRules = true;
+      if (value) current.rules.push({ path: value, allow: key === 'allow' });
     }
   }
-
-  const wanted = agentNames.map((n) => n.toLowerCase());
-  const disallowedAgents: string[] = [];
-  let blocksAll = false;
-  for (const group of groups) {
-    if (!group.disallow.includes('/')) continue;
-    if (group.agents.includes('*')) blocksAll = true;
-    for (const agent of group.agents) {
-      if (wanted.includes(agent) && !disallowedAgents.includes(agent)) disallowedAgents.push(agent);
+  function denied(agent: string): boolean {
+    const specific = groups.filter((g) => g.agents.includes(agent));
+    const selected = specific.length ? specific : groups.filter((g) => g.agents.includes('*'));
+    let bestLength = -1;
+    let allowed = true;
+    for (const rule of selected.flatMap((g) => g.rules)) {
+      const end = rule.path.endsWith('$');
+      const pattern = (end ? rule.path.slice(0, -1) : rule.path)
+        .split('*').map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*');
+      if (!new RegExp('^' + pattern + (end ? '$' : '')).test(path)) continue;
+      const length = rule.path.replace(/\*/g, '').length;
+      if (length > bestLength || (length === bestLength && rule.allow)) {
+        bestLength = length;
+        allowed = rule.allow;
+      }
     }
+    return !allowed;
   }
-  return { found: true, blocksAll, disallowedAgents };
+  const wanted = [...new Set(agentNames.map((name) => name.toLowerCase()))];
+  return { found: true, blocksAll: denied('*'), disallowedAgents: wanted.filter(denied) };
 }
 
 async function fetchRobots(url: URL, userAgent: string): Promise<RobotsInfo> {
@@ -84,7 +92,7 @@ async function fetchRobots(url: URL, userAgent: string): Promise<RobotsInfo> {
     });
     if (!res.ok) return { found: false, blocksAll: false, disallowedAgents: [] };
     const body = await res.text();
-    return parseRobots(body, Object.values(ROBOTS_AGENT_NAMES));
+    return parseRobots(body, Object.values(ROBOTS_AGENT_NAMES), url.pathname + url.search);
   } catch (err) {
     return { found: false, blocksAll: false, disallowedAgents: [], note: `robots.txt unreadable: ${(err as Error).message}` };
   }
@@ -321,4 +329,3 @@ export async function scanUrl(options: ScanOptions): Promise<ScanResult> {
   const summary: ScanSummary = summarize(base);
   return { snapshot: { ...base, summary }, warnings };
 }
-
