@@ -158,9 +158,7 @@ export function renderMarkdown(snapshot: Snapshot): string {
     lines.push('| --- | ---: | ---: | ---: | ---: | ---: | --- |');
     for (const pair of snapshot.cloaking.pairs) {
       lines.push(
-        `| ${pair.label} | ${pair.status ?? '—'} | ${pair.byteDelta >= 0 ? '+' : ''}${num(pair.byteDelta)} | ${percentage(
-          pair.similarity,
-        )} | ${pair.botOnly.length} | ${pair.browserOnly.length} | ${pair.verdict} |`,
+        `| ${pair.label} | ${pair.status ?? '—'} | ${pair.byteDelta >= 0 ? '+' : ''}${num(pair.byteDelta)} | ${pair.rawComparable === false ? "unavailable" : percentage(pair.similarity)} | ${pair.botOnly.length} | ${pair.browserOnly.length} | ${pair.verdict} |`,
       );
     }
     lines.push('');
