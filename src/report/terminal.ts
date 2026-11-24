@@ -111,7 +111,7 @@ export function renderTerminal(snapshot: Snapshot, opts: TerminalOptions): strin
 
   if(snapshot.vectors?.length){
     lines.push('', 'Header/session axes (single-sample response timing, not a verdict):');
-    for(const row of snapshot.vectors)lines.push(`  ${row.uaId} ${row.axis}: ${row.comparison.verdict}; response delta ${row.responseDeltaMs??'n/a'}ms`);
+    for(const row of snapshot.vectors)lines.push(`  ${row.uaId} ${row.axis}: raw ${row.comparison.verdict}; rendered similarity ${Math.round(row.comparison.renderedSimilarity*100)}%; response delta ${row.responseDeltaMs??'n/a'}ms`);
   }
   if (snapshot.cloaking.pairs.length) {
     lines.push(p.bold('User-agent cloaking'));
