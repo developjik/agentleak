@@ -29,15 +29,24 @@ const NAMED_ENTITIES: Record<string, string> = {
   szlig: 'ß',
 };
 
+// HTML numeric reference replacements for legacy Windows-1252 control codes.
+const C1_REPLACEMENTS: Record<number, number> = {
+  128: 0x20ac, 130: 0x201a, 131: 0x192, 132: 0x201e, 133: 0x2026,
+  134: 0x2020, 135: 0x2021, 136: 0x2c6, 137: 0x2030, 138: 0x160,
+  139: 0x2039, 140: 0x152, 142: 0x17d, 145: 0x2018, 146: 0x2019,
+  147: 0x201c, 148: 0x201d, 149: 0x2022, 150: 0x2013, 151: 0x2014,
+  152: 0x2dc, 153: 0x2122, 154: 0x161, 155: 0x203a, 156: 0x153,
+  158: 0x17e, 159: 0x178,
+};
+
+/** Semicolon-terminated references. Invalid scalar values become U+FFFD, like HTML. */
 export function decodeEntities(input: string): string {
-  return input.replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (whole, body: string) => {
-    if (body.startsWith('#x') || body.startsWith('#X')) {
-      const cp = parseInt(body.slice(2), 16);
-      return Number.isFinite(cp) ? String.fromCodePoint(cp) : whole;
-    }
+  return input.replace(/&(#(?:[xX][0-9a-fA-F]+|[0-9]+)|[a-zA-Z]+);/g, (whole, body: string) => {
     if (body.startsWith('#')) {
-      const cp = parseInt(body.slice(1), 10);
-      return Number.isFinite(cp) ? String.fromCodePoint(cp) : whole;
+      const hex = body[1]?.toLowerCase() === 'x';
+      const cp = parseInt(body.slice(hex ? 2 : 1), hex ? 16 : 10);
+      if (!Number.isFinite(cp) || cp === 0 || cp > 0x10ffff || (cp >= 0xd800 && cp <= 0xdfff)) return '\uFFFD';
+      return String.fromCodePoint(C1_REPLACEMENTS[cp] ?? cp);
     }
     return NAMED_ENTITIES[body.toLowerCase()] ?? whole;
   });
