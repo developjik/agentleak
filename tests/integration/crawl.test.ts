@@ -14,7 +14,7 @@ test('sitemap index, bounds, partial failure, real scans, aggregate CLI gates an
   const server = createServer((req, res) => {
     if (req.url === '/robots.txt') { res.end('User-agent: *\nAllow: /'); return; }
     if (req.url === '/index.xml') { res.end(`<sitemapindex><sitemap><loc>${origin}/map.xml</loc></sitemap><sitemap><loc>${origin}/index.xml</loc></sitemap></sitemapindex>`); return; }
-    if (req.url === '/map.xml') { res.end(`<urlset><url><loc>${origin}/a</loc></url><url><loc>${origin}/b</loc></url><url><loc>${origin}/fail</loc></url><url><loc>${origin}/a#dup</loc></url><url><loc>https://other.invalid/no</loc></url></urlset>`); return; }
+    if (req.url === '/map.xml') { res.end(`<urlset><url><loc>${origin}/a</loc></url><url><loc>${origin}/b</loc></url><url><loc>not-an-absolute-url</loc></url><url><loc>${origin}/fail</loc></url><url><loc>${origin}/a#dup</loc></url><url><loc>https://other.invalid/no</loc></url></urlset>`); return; }
     if (req.url === '/redirect.xml') { res.writeHead(302, { location: 'http://other.invalid/map.xml' }); res.end(); return; }
     if (req.url === '/fail') { res.destroy(); return; }
     res.setHeader('content-type', 'text/html');
