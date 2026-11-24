@@ -153,7 +153,7 @@ export function renderMarkdown(snapshot: Snapshot): string {
 
   if (snapshot.vectors?.length) {
     lines.push('## Header and session axes', '', '| Agent | Axis | HTTP | Raw similarity | Rendered similarity | Raw verdict | Response delta (ms) |', '| --- | --- | --- | --- | --- | --- | ---: |');
-    for(const row of snapshot.vectors) lines.push(`| ${row.uaId} | ${row.axis} | ${row.variant.status??'n/a'} | ${row.comparison.rawComparable===false?'unavailable':percentage(row.comparison.similarity)} | ${percentage(row.comparison.renderedSimilarity)} | ${row.comparison.verdict} | ${row.responseDeltaMs??'n/a'} |`);
+    for(const row of snapshot.vectors) lines.push(`| ${row.uaId} | ${row.axis} | ${row.variant.status??'n/a'} | ${row.variant.error||row.baseline.error||row.comparison.rawComparable===false?'unavailable':percentage(row.comparison.similarity)} | ${row.variant.error||row.baseline.error?'unavailable':percentage(row.comparison.renderedSimilarity)} | ${row.comparison.verdict} | ${row.responseDeltaMs??'n/a'} |`);
     lines.push('', 'Each row changes one axis relative to the same UA in a fresh context. Session warms the URL once, then measures a second navigation. Timing is one navigation sample, not proof of deliberate delay. Content differences may be localization or personalization, not malicious cloaking.', '');
   }
   if (snapshot.cloaking.pairs.length) {
