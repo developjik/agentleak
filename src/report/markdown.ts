@@ -112,14 +112,14 @@ export function renderMarkdown(snapshot: Snapshot): string {
 
   lines.push('## 2. Per-agent response');
   lines.push('');
-  lines.push('| Agent | UA kind | HTTP | Visible chars | Hidden blocks | Comments | Similar to human | Verdict | Response (ms) |');
-  lines.push('| --- | --- | ---: | ---: | ---: | ---: | ---: | --- | ---: |');
+  lines.push('| Agent | UA kind | HTTP | Visible chars | Hidden blocks | Comments | Similar to human | Verdict |');
+  lines.push('| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |');
   for (const obs of snapshot.observations) {
     const pair = snapshot.cloaking.pairs.find((p) => p.uaId === obs.uaId);
     lines.push(
       `| ${obs.label} | ${obs.kind} | ${uaStatus(obs)} | ${num(obs.visibleChars)} | ${obs.hiddenBlocks.length} | ${obs.comments.length} | ${
         pair ? (pair.rawComparable === false ? 'unavailable' : percentage(pair.similarity)) : 'baseline'
-      } | ${pair ? pair.verdict : 'baseline'} | ${obs.responseMs??'n/a'} |`,
+      } | ${pair ? pair.verdict : 'baseline'} |`,
     );
   }
   lines.push('');
@@ -152,8 +152,8 @@ export function renderMarkdown(snapshot: Snapshot): string {
   lines.push('');
 
   if (snapshot.vectors?.length) {
-    lines.push('## Header and session axes', '', '| Agent | Axis | HTTP | Similarity | Verdict | Response delta (ms) |', '| --- | --- | --- | --- | --- | ---: |');
-    for(const row of snapshot.vectors) lines.push(`| ${row.uaId} | ${row.axis} | ${row.variant.status??'n/a'} | ${row.comparison.rawComparable===false?'unavailable':percentage(row.comparison.similarity)} | ${row.comparison.verdict} | ${row.responseDeltaMs??'n/a'} |`);
+    lines.push('## Header and session axes', '', '| Agent | Axis | HTTP | Raw similarity | Rendered similarity | Raw verdict | Response delta (ms) |', '| --- | --- | --- | --- | --- | --- | ---: |');
+    for(const row of snapshot.vectors) lines.push(`| ${row.uaId} | ${row.axis} | ${row.variant.status??'n/a'} | ${row.comparison.rawComparable===false?'unavailable':percentage(row.comparison.similarity)} | ${percentage(row.comparison.renderedSimilarity)} | ${row.comparison.verdict} | ${row.responseDeltaMs??'n/a'} |`);
     lines.push('', 'Each row changes one axis relative to the same UA in a fresh context. Session warms the URL once, then measures a second navigation. Timing is one navigation sample, not proof of deliberate delay. Content differences may be localization or personalization, not malicious cloaking.', '');
   }
   if (snapshot.cloaking.pairs.length) {
