@@ -197,8 +197,7 @@ replacing them.
 
 ## Limits
 
-- Cloaking detection varies the `User-Agent` header only. A site that cloaks by IP, cookies,
-  `Accept-Language`, TLS fingerprint or client-side checks will look identical.
+- Default cloaking detection varies `User-Agent` only. Opt-in `--vectors` additionally changes Accept-Language, Referer, and a warmed session one axis at a time for every allowed UA. It makes three extra scans per UA, plus a warm-up navigation for the session scan. Cookie values are not printed. Timing is one navigation-to-response sample, never proof of selective delay. Localized/personalized content is not automatically a leak. IP, TLS fingerprints, authenticated sessions and custom cookie values remain out of scope. Untested headers, time-dependent behavior and client-side checks may still be missed.
 - A dynamic page whose content depends on login, location or time will show deltas that are
   not cloaking; inspect the evidence in the report.
 - The pattern catalogue is deliberately conservative. Unusual phrasings, other languages and
@@ -243,3 +242,5 @@ agent-specific groups override the wildcard default; matching groups are merged,
 and the longest matching Allow/Disallow rule wins (Allow wins ties). Skipped bots
 keep their existing skipped observation and warning. Without the option, scans
 continue unchanged. This is an audit option, not a general-purpose crawler.
+
+`agentleak scan <url> --vectors` writes a per-axis table in Markdown and terminal output and full observations under `vectors` in JSON. Defaults and UA findings remain unchanged; vector content differences are separate diagnostics and do not trigger the leak gate.
