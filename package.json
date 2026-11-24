@@ -17,7 +17,7 @@
     "fixtures": "tsx src/fixtures/serve.ts",
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "vitest run",
-    "test:e2e": "playwright test",
+    "test:e2e": "npm run build && playwright test",
     "scan:demo": "tsx src/cli.ts scan",
     "diff:demo": "tsx src/cli.ts diff",
     "test:coverage": "vitest run --coverage"

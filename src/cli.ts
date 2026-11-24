@@ -27,7 +27,7 @@ Scan options
   --timeout <ms>         Navigation timeout (default: 30000)
   --settle <ms>          Extra wait after load, for late JavaScript (default: 800)
   --viewport <WxH>       Rendering viewport (default: 1280x900)
-  --respect-robots       Skip agents whose robots.txt group disallows /
+  --respect-robots       Skip agents disallowed for this URL by robots.txt
   --fail-on-leak         Exit 1 when a medium or high finding exists
   --fail-on <level>      leak | high | never (default: never)
   --max-findings <n>     Findings shown in the terminal summary (default: 8)
