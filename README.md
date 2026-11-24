@@ -244,3 +244,9 @@ keep their existing skipped observation and warning. Without the option, scans
 continue unchanged. This is an audit option, not a general-purpose crawler.
 
 `agentleak scan <url> --vectors` writes a per-axis table in Markdown and terminal output and full observations under `vectors` in JSON. Defaults and UA findings remain unchanged; vector content differences are separate diagnostics and do not trigger the leak gate.
+
+## Development baseline (DEV-128)
+
+Use Node.js 22.12.0 (`.nvmrc`) for development and CI. Vitest 5.1.1 requires Node 22.12+ on its supported release lines; Node 20.19 is outside its declared development support range. It may execute there, but CI does not treat that as supported test-runner usage. This development requirement does not change the package engine declaration. Runtime compatibility must be checked using the built package, separately from the test runner. TypeScript 7.0.2 is the development compiler baseline.
+
+Runtime smoke checks the installed CLI under normal Node symlink resolution. Node --preserve-symlinks-main on an external .bin link changes relative-module resolution and is not a supported CLI invocation. Browser behavior is tested on the development runtime.
