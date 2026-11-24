@@ -69,6 +69,8 @@ export interface UaObservation {
 }
 
 export interface CloakingPair {
+  /** False when raw-source parsing failed on either side. */
+  rawComparable?: boolean;
   uaId: string;
   label: string;
   status: number | null;
