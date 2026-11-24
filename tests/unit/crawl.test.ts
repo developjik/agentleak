@@ -56,6 +56,8 @@ describe('crawl inputs and comparison', () => {
     expect(diffCrawls(before, omitted).uncomparable[0]?.reason).toContain('not proof');
     const newPage = { ...after, pages: [{ ...after.pages[0]!, url: 'https://example.com/new', snapshot: { ...after.pages[0]!.snapshot!, url: 'https://example.com/new' } }] };
     expect(diffCrawls(before, newPage).addedPages).toEqual(['https://example.com/new']);
+    expect(renderCrawlTerminal(newPage, diffCrawls(before, newPage))).toContain('NEW PAGE https://example.com/new: 1 instruction blocks');
+    expect(renderCrawlMarkdown(newPage, diffCrawls(before, newPage))).toContain('NEW PAGE https://example.com/new: 1 instruction blocks');
   });
   it('rejects duplicate/mismatched pages and renders remote markup as text', () => {
     const file = crawl('<script>alert(1)</script>|raw');
