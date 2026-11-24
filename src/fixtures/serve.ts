@@ -15,6 +15,11 @@ export interface FixtureServer {
 export async function startFixtureServer(port = 4319): Promise<FixtureServer> {
   const server: Server = createServer((req, res) => {
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
+    if(url.pathname==='/language-cloaking') {
+      const korean=String(req.headers['accept-language']??'').startsWith('ko');
+      res.writeHead(200,{'content-type':'text/html; charset=utf-8'});
+      res.end(korean?'<html lang="ko"><title>Language</title><main>한국어 요청에서만 제공하는 완전히 다른 별도 콘텐츠입니다. 이 페이지는 언어 축 비교 테스트용입니다.</main></html>':'<html lang="en"><title>Language</title><main>Ordinary English content for the standard language profile. This is the baseline of the header comparison fixture.</main></html>');return;
+    }
     const response = fixtureResponse(url.pathname, req.headers['user-agent'] ?? '');
     if (!response) {
       res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });

@@ -27,6 +27,7 @@ Scan options
   --timeout <ms>         Navigation timeout (default: 30000)
   --settle <ms>          Extra wait after load, for late JavaScript (default: 800)
   --viewport <WxH>       Rendering viewport (default: 1280x900)
+  --vectors              Also compare language, Referer and warmed-session axes (extra requests)
   --respect-robots       Skip agents disallowed for this URL by robots.txt
   --fail-on-leak         Exit 1 when a medium or high finding exists
   --fail-on <level>      leak | high | never (default: never)
@@ -86,6 +87,7 @@ export async function main(argv: string[]): Promise<number> {
         settle: { type: 'string' },
         viewport: { type: 'string' },
         'respect-robots': { type: 'boolean' },
+        vectors: { type: 'boolean' },
         'fail-on': { type: 'string' },
         'fail-on-leak': { type: 'boolean' },
         'max-findings': { type: 'string' },
@@ -150,6 +152,7 @@ export async function main(argv: string[]): Promise<number> {
         settleMs: values.settle !== undefined ? numOpt(values.settle, 800, 'settle') : undefined,
         viewport: values.viewport ? parseViewport(values.viewport) : undefined,
         respectRobots: Boolean(values['respect-robots']),
+        vectors: Boolean(values.vectors),
       });
 
       mkdirSync(outDir, { recursive: true });
