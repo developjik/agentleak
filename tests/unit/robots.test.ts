@@ -25,4 +25,16 @@ describe('effective robots policy', () => {
     expect(parseRobots(text, names, '/fileXpdf').disallowedAgents).toEqual([]);
     expect(parseRobots(text, names, '/file.pdf/more').disallowedAgents).toEqual([]);
   });
+  test('normalizes UTF-8 and unreserved escapes without decoding reserved slash', () => {
+    expect(parseRobots('User-agent: *\nDisallow: /비밀', names, '/%EB%B9%84%EB%B0%80/page').disallowedAgents).toEqual(names);
+    expect(parseRobots('User-agent: *\nDisallow: /%70rivate', names, '/private').disallowedAgents).toEqual(names);
+    expect(parseRobots('User-agent: *\nDisallow: /a%2Fb', names, '/a/b').disallowedAgents).toEqual([]);
+  });
+  test('uses the full wildcard rule length and keeps blocksAll site-wide', () => {
+    expect(parseRobots('User-agent: *\nAllow: /p\nDisallow: /p*', names, '/private').disallowedAgents).toEqual(names);
+    expect(parseRobots('User-agent: *\nDisallow: /private', names, '/private').blocksAll).toBe(false);
+  });
+  test('handles adversarial wildcard patterns without backtracking', () => {
+    expect(parseRobots('User-agent: *\nDisallow: /' + 'a*'.repeat(60) + 'b$', names, '/' + 'a'.repeat(120)).disallowedAgents).toEqual([]);
+  });
 });
