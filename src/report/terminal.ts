@@ -123,9 +123,7 @@ export function renderTerminal(snapshot: Snapshot, opts: TerminalOptions): strin
                 ? p.yellow('minor delta')
                 : p.green('identical');
       lines.push(
-        `  ${pair.label.padEnd(26)} status ${String(pair.status ?? '-').padEnd(4)} similar ${percentage(
-          pair.similarity,
-        ).padStart(4)}  ${pair.botOnly.length ? p.yellow(`+${pair.botOnly.length} bot-only`) : p.gray('+0 bot-only')}  ${mark}`,
+        `  ${pair.label.padEnd(26)} status ${String(pair.status ?? '-').padEnd(4)} similar ${(pair.rawComparable === false ? "n/a" : percentage(pair.similarity)).padStart(4)}  ${pair.botOnly.length ? p.yellow(`+${pair.botOnly.length} bot-only`) : p.gray('+0 bot-only')}  ${mark}`,
       );
     }
     for (const pair of snapshot.cloaking.pairs.filter((x) => x.botOnly.length > 0).slice(0, 3)) {
