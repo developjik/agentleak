@@ -45,33 +45,43 @@ function decodeXml(value: string): string {
 export function parseSitemap(xml: string): { index: boolean; locations: string[] } {
   if (Buffer.byteLength(xml) > 5_000_000 || /<!DOCTYPE|<!ENTITY/i.test(xml)) throw new Error('Sitemap too large or contains a forbidden DTD/entity declaration');
   const tokens = xml.match(/<!--[\s\S]*?-->|<\?[\s\S]*?\?>|<!\[CDATA\[[\s\S]*?\]\]>|<[^>]*>|[^<]+/g) ?? [];
-  const stack: string[] = []; let root = ''; let text = ''; let closed = false;
+  const stack: Array<{ raw: string; local: string; uri: string; ns: Record<string,string> }> = [];
+  let root = ''; let rootUri = ''; let text = ''; let closed = false;
   const locations: string[] = [];
+  const isLoc = () => stack.at(-1)?.local === 'loc' && stack.at(-1)?.uri === rootUri;
   for (const token of tokens) {
     if (token.startsWith('<!--') || token.startsWith('<?')) continue;
-    if (token.startsWith('<![CDATA[')) { if (stack.at(-1) === (root.includes(':') ? root.split(':')[0] + ':loc' : 'loc')) text += token.slice(9, -3); continue; }
+    if (token.startsWith('<![CDATA[')) { if (isLoc()) text += token.slice(9, -3); continue; }
     if (token.startsWith('</')) {
-      const name = /^<\/([\w:.-]+)\s*>$/.exec(token)?.[1];
-      if (!name || stack.pop() !== name) throw new Error('Malformed sitemap XML');
-      if (name === (root.includes(':') ? root.split(':')[0] + ':loc' : 'loc')) { if (!text.trim()) throw new Error('Empty sitemap loc'); locations.push(text.trim()); text = ''; }
-      if (!stack.length) closed = true;
+      const raw = /^<\/([\w:.-]+)\s*>$/.exec(token)?.[1];
+      if (!raw || stack.at(-1)?.raw !== raw) throw new Error('Malformed sitemap XML');
+      if (isLoc()) { if (!text.trim()) throw new Error('Empty sitemap loc'); locations.push(text.trim()); text = ''; }
+      stack.pop(); if (!stack.length) closed = true;
     } else if (token.startsWith('<')) {
       const match = /^<([\w:.-]+)(?:\s+[^<>]*)?\s*\/?\s*>$/.exec(token);
       if (!match) throw new Error('Malformed sitemap XML');
-      const name = match[1]!;
-      if (!stack.length) { if (root || closed || !['urlset', 'sitemapindex'].includes(name.split(':').at(-1)!)) throw new Error('Expected one sitemap root'); root = name; }
-      if (name === (root.includes(':') ? root.split(':')[0] + ':loc' : 'loc') && !(stack.length === 2 && stack[0] === root && stack[1] === (root.includes(':') ? root.split(':')[0] + ':' : '') + (root.split(':').at(-1) === 'urlset' ? 'url' : 'sitemap'))) throw new Error('Unexpected sitemap loc');
-      if (stack.at(-1) === (root.includes(':') ? root.split(':')[0] + ':loc' : 'loc')) throw new Error('Nested markup in sitemap loc');
-      if (token.endsWith('/>') && name === (root.includes(':') ? root.split(':')[0] + ':loc' : 'loc')) throw new Error('Empty sitemap loc');
-      if (!token.endsWith('/>')) stack.push(name);
-      else if (!stack.length) closed = true;
+      const raw = match[1]!; const parts = raw.split(':'); const local = parts.at(-1)!;
+      const ns = { ...(stack.at(-1)?.ns ?? {}) };
+      for (const attr of token.matchAll(/\sxmlns(?::([\w.-]+))?\s*=\s*(["'])(.*?)\2/g)) ns[attr[1] ?? ''] = decodeXml(attr[3]!);
+      const prefix = parts.length > 1 ? parts[0]! : '';
+      if (prefix && ns[prefix] === undefined) throw new Error('Undeclared sitemap namespace');
+      const uri = ns[prefix] ?? '';
+      if (!stack.length) {
+        if (root || closed || !['urlset', 'sitemapindex'].includes(local)) throw new Error('Expected one sitemap root');
+        root = local; rootUri = uri;
+      }
+      const pageLoc = local === 'loc' && uri === rootUri;
+      if (pageLoc && !(stack.length === 2 && stack[0]!.local === root && stack[1]!.local === (root === 'urlset' ? 'url' : 'sitemap') && stack[1]!.uri === rootUri)) throw new Error('Unexpected sitemap loc');
+      if (isLoc()) throw new Error('Nested markup in sitemap loc');
+      if (token.endsWith('/>')) { if (pageLoc) throw new Error('Empty sitemap loc'); if (!stack.length) closed = true; }
+      else stack.push({ raw, local, uri, ns });
     } else {
-      if (stack.at(-1) === (root.includes(':') ? root.split(':')[0] + ':loc' : 'loc')) text += decodeXml(token);
+      if (isLoc()) text += decodeXml(token);
       else if (!stack.length && token.trim()) throw new Error('Text outside sitemap root');
     }
   }
   if (stack.length || !root || !closed) throw new Error('Incomplete sitemap XML');
-  return { index: root.split(':').at(-1) === 'sitemapindex', locations };
+  return { index: root === 'sitemapindex', locations };
 }
 async function boundedText(response: Response, max: number): Promise<string> {
   const reader = response.body?.getReader(); if (!reader) return '';
@@ -223,9 +233,21 @@ export function writeCrawlJson(file: string, value: unknown): void {
   const out = (s: string) => { const b = Buffer.from(s); let i = 0; while (i < b.length) i += writeSync(fd, b, i, b.length - i); };
   const encode = (v: unknown): void => {
     if (typeof v === 'string') { out('"'); for (let i = 0; i < v.length; i += 8192) out(JSON.stringify(v.slice(i, i + 8192)).slice(1, -1)); out('"'); }
-    else if (Array.isArray(v)) { out('['); v.forEach((item, i) => { if (i) out(','); encode(item === undefined ? null : item); }); out(']'); }
+    else if (Array.isArray(v)) { out('['); for (let i = 0; i < v.length; i++) { if (i) out(','); encode(v[i] === undefined ? null : v[i]); } out(']'); }
     else if (v && typeof v === 'object') { out('{'); let first = true; for (const [k, item] of Object.entries(v)) { if (item === undefined) continue; if (!first) out(','); first = false; encode(k); out(':'); encode(item); } out('}'); }
     else out(JSON.stringify(v) ?? 'null');
   };
   try { encode(value); out('\n'); } finally { closeSync(fd); }
+}
+
+export function renderCrawlTerminal(file: CrawlSnapshot, diff?: CrawlDiff, maxFindings = 8): string {
+  const plain = (s: string) => s.replace(/[\x00-\x1f\x7f-\x9f]/g, ' ');
+  const lines = [`agentleak crawl: ${file.pages.length} pages; ${file.pages.filter(p => p.error).length} failed/incomplete`];
+  for (const p of file.pages) {
+    lines.push(plain(p.url), p.error ? `  INCOMPLETE: ${plain(p.error)}` : '  Complete');
+    for (const f of (p.snapshot?.findings ?? []).slice(0, maxFindings)) lines.push(`  ${f.severity}/${f.channel}: ${plain(f.snippet)}`);
+  }
+  if (diff) lines.push(`Baseline: ${diff.newInstructions} new; ${diff.removedInstructions} removed; ${diff.uncomparable.length} uncomparable`);
+  for (const w of file.warnings) lines.push(`Warning: ${plain(w)}`);
+  return lines.join('\n') + '\n';
 }
