@@ -129,7 +129,7 @@ async function observe(
   browser: Browser,
   url: string,
   ua: UaSpec,
-  opts: Required<Pick<ScanOptions, 'timeoutMs' | 'settleMs' | 'maxTextChars' | 'viewport'>>,
+  opts: Required<Pick<ScanOptions, 'timeoutMs' | 'settleMs' | 'maxTextChars' | 'viewport'>> & {measureResponse?:boolean},
   profile: { headers?: Record<string,string>; warmSession?: boolean } = {},
 ): Promise<UaObservation> {
   const started = Date.now();
@@ -173,9 +173,9 @@ async function observe(
     // the helper has to exist there as well.
     await page.addInitScript({ content: 'globalThis.__name = globalThis.__name || ((fn) => fn);' });
     if (profile.warmSession) { await page.goto(url, {waitUntil:'load',timeout:opts.timeoutMs}); }
-    const navigationStarted = Date.now();
     const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: opts.timeoutMs });
-    const responseMs = Date.now() - navigationStarted;
+    const timing = response?.request().timing();
+    const responseMs = timing && timing.responseStart >= 0 ? Math.round(timing.responseStart) : undefined;
     await page.waitForLoadState('networkidle', { timeout: Math.min(4_000, opts.timeoutMs) }).catch(() => {});
     if (opts.settleMs > 0) await page.waitForTimeout(opts.settleMs);
 
@@ -226,7 +226,7 @@ async function observe(
       ...base,
       ...(rawTextError ? { rawTextError } : {}),
       status,
-      responseMs,
+      ...(opts.measureResponse ? {responseMs} : {}),
       ...(profile.warmSession ? {sessionWarm:true} : {}),
       finalUrl: extraction.url || page.url(),
       title: extraction.title,
@@ -287,6 +287,7 @@ export async function scanUrl(options: ScanOptions): Promise<ScanResult> {
     settleMs: options.settleMs ?? DEFAULT_SETTLE,
     maxTextChars: options.maxTextChars ?? DEFAULT_MAX_TEXT,
     viewport: options.viewport ?? { width: 1280, height: 900 },
+    measureResponse: Boolean(options.vectors),
   };
   const warnings: string[] = [];
 
@@ -335,7 +336,11 @@ export async function scanUrl(options: ScanOptions): Promise<ScanResult> {
       if (obs.error) warnings.push(`${ua.label}: ${obs.error}`);
       if (obs.blocked) warnings.push(`${ua.label}: HTTP ${obs.status} (explicitly denied)`);
       observations.push(obs);
-      if (options.vectors && !obs.error && !obs.blocked) {
+    }
+    // Capture all default UA observations before optional probes alter remote state.
+    for (const obs of observations) {
+      const ua=userAgents.find(ua=>ua.id===obs.uaId)!;
+      if (options.vectors && !obs.error) {
         const profiles: Array<{axis:'accept-language'|'referer'|'session';headers?:Record<string,string>;warmSession?:boolean}> = [
           {axis:'accept-language' as const,headers:{'accept-language':'ko-KR,ko;q=0.9'}},
           {axis:'referer' as const,headers:{referer:url.origin+'/'}},
