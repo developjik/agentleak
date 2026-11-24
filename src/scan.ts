@@ -175,7 +175,7 @@ async function observe(
     if (profile.warmSession) { await page.goto(url, {waitUntil:'load',timeout:opts.timeoutMs}); }
     const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: opts.timeoutMs });
     const timing = response?.request().timing();
-    const responseMs = timing && timing.responseStart >= 0 ? Math.round(timing.responseStart) : undefined;
+    const responseMs = timing && timing.requestStart >= 0 && timing.responseStart >= timing.requestStart ? Math.round(timing.responseStart - timing.requestStart) : undefined;
     await page.waitForLoadState('networkidle', { timeout: Math.min(4_000, opts.timeoutMs) }).catch(() => {});
     if (opts.settleMs > 0) await page.waitForTimeout(opts.settleMs);
 
@@ -388,4 +388,4 @@ export async function scanUrl(options: ScanOptions): Promise<ScanResult> {
   };
   const summary: ScanSummary = summarize(base);
   return { snapshot: { ...base, summary }, warnings };
-}
+      }
