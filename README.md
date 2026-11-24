@@ -300,3 +300,7 @@ Terminal --max-findings defaults to eight per page; JSON/Markdown retain all.
 JSON is serialized incrementally to avoid a single site-sized string. Full page
 evidence still resides in memory while scanning; choose max-pages/concurrency
 for available memory, especially with vectors or unusually large responses.
+
+Sitemap parsing also caps element nesting at32 and inherited namespace entries
+at64 to bound work on hostile XML. Terminal baseline output lists page deltas
+and each uncomparable URL/reason, alongside per-page coverage warnings.
