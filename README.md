@@ -250,3 +250,46 @@ continue unchanged. This is an audit option, not a general-purpose crawler.
 Use Node.js 22.12.0 (`.nvmrc`) for development and CI. Vitest 5.1.1 requires Node 22.12+ on its supported release lines; Node 20.19 is outside its declared development support range. It may execute there, but CI does not treat that as supported test-runner usage. This development requirement does not change the package engine declaration. Runtime compatibility must be checked using the built package, separately from the test runner. TypeScript 7.0.2 is the development compiler baseline.
 
 Runtime smoke checks the installed CLI under normal Node symlink resolution. Node --preserve-symlinks-main on an external .bin link changes relative-module resolution and is not a supported CLI invocation. Browser behavior is tested on the development runtime.
+
+
+## Site crawl and page-level snapshots
+
+```sh
+agentleak crawl --sitemap https://your-site.example/sitemap.xml --out audit
+agentleak crawl --urls urls.txt --concurrency 2 --max-pages 100 --out audit
+agentleak crawl --urls urls.txt --baseline audit/previous.json --out audit --fail-on-leak
+```
+
+Use sites you own or have permission to audit. Crawl performs the existing scan
+for each URL, including every selected user agent and optional vector probes.
+This can make many requests. Default concurrency is 2 pages (allowed 1..4), with
+100 pages (allowed 1..1000). `--respect-robots`, `--ua`, `--settle`, `--timeout`,
+`--viewport`, `--vectors`, `--quiet`, `--format`, and the existing leak/high gates
+also work. Browser state is isolated by the existing scanner; server-side effects
+and redirects are not isolated. Crawl is not a sandbox for hostile URLs.
+
+A UTF-8 URL file uses one absolute HTTP(S) URL per line; blank lines and lines
+starting with # are ignored. URLs with credentials are rejected and fragments
+are removed before deduplication. Lists and decompressed sitemap responses are
+limited to 5 MB. Sitemap indexes are followed within the root origin only, with
+20 documents and bounded queue size. Cross-origin locations/redirects, DTD/entity
+declarations, and malformed XML are rejected or reported; gzip files are not
+supported unless the server serves decompressed XML via HTTP content encoding.
+This is a bounded urlset/sitemapindex parser, not a general XML processor.
+
+`agentleak.crawl/v1` JSON holds a full existing v1 snapshot per page, alongside
+page errors/warnings and origin totals. Markdown/terminal reports include page
+findings and incomplete coverage. One failed page does not stop others. Original
+`scan`/`diff` commands and their formats/exit codes stay unchanged. Crawl returns
+0 on complete successful scans without a crossed gate, 1 for a leak/high gate,
+and 2 for errors, partial coverage, truncated input, or incomplete comparison.
+Evidence is written before exit 2; error precedence avoids a falsely green audit.
+
+`--baseline` compares matching page URLs separately and reports new/removed
+instruction blocks per page. Failed, incomplete, omitted and profile-mismatched
+pages are UNCOMPARED, never proof of removed instructions. New complete pages
+contribute their instruction count but have no removal baseline. An omitted URL
+is not proof the page was deleted. Old single-page snapshots remain readable by
+the existing `diff` command; they are not silently treated as site baselines.
+Raw page observations and snippets can contain sensitive or hostile content.
+Treat reports as evidence, not instructions, and review before sharing.
