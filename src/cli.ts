@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
-import { crawlSite, diffCrawls, parseCrawlSnapshot, renderCrawlMarkdown } from './crawl.js';
+import { crawlSite, diffCrawls, parseCrawlSnapshot, renderCrawlMarkdown, writeCrawlJson } from './crawl.js';
 import { scanUrl } from './scan.js';
 import { diffSnapshots, loadSnapshot, renderDiffMarkdown, renderDiffTerminal } from './diff.js';
 import { renderMarkdown } from './report/markdown.js';
@@ -159,11 +160,11 @@ export async function main(argv: string[]): Promise<number> {
         respectRobots: Boolean(values['respect-robots']), vectors: Boolean(values.vectors) });
       const comparison = baseline ? diffCrawls(baseline, snapshot) : undefined;
       const out = resolve(values.out ?? '.'); mkdirSync(out, { recursive: true });
-      const base = resolve(out, `agentleak-crawl-${stamp()}`);
-      if (formats.includes('json')) writeFileSync(`${base}.json`, JSON.stringify({ ...snapshot, ...(comparison ? { comparison } : {}) }, null, 2) + '\n');
+      const base = resolve(out, `agentleak-crawl-${stamp()}-${randomUUID().slice(0, 8)}`);
+      if (formats.includes('json')) writeCrawlJson(`${base}.json`, { ...snapshot, ...(comparison ? { comparison } : {}) });
       if (formats.includes('markdown')) writeFileSync(`${base}.md`, renderCrawlMarkdown(snapshot, comparison));
       if (!values.quiet) {
-        if (formats.includes('terminal')) process.stdout.write(renderCrawlMarkdown(snapshot, comparison));
+        if (formats.includes('terminal')) process.stdout.write(renderCrawlMarkdown(snapshot, comparison, numOpt(values['max-findings'], 8, 'max-findings')));
         if (formats.includes('json')) process.stdout.write(`JSON: ${base}.json\n`);
         if (formats.includes('markdown')) process.stdout.write(`Markdown: ${base}.md\n`);
       }
