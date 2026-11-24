@@ -69,6 +69,8 @@ export interface UaObservation {
 }
 
 export interface CloakingPair {
+  /** False means raw-source parsing failed on either side: similarity is an unmeasured 0 sentinel, not a score. Absent preserves legacy measured-value semantics. */
+  rawComparable?: boolean;
   uaId: string;
   label: string;
   status: number | null;

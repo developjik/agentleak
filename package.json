@@ -17,10 +17,11 @@
     "fixtures": "tsx src/fixtures/serve.ts",
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "vitest run",
-    "test:e2e": "npm run build && playwright test",
+    "test:e2e": "npm run build && npm run test:integration && playwright test",
     "scan:demo": "tsx src/cli.ts scan",
     "diff:demo": "tsx src/cli.ts diff",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "playwright": "^1.65.0"
